@@ -1,0 +1,34 @@
+* What this: A decent reference to NEAR's cross contract calls, callbacks, and simulation tests
+** Build the contracts:
+=./build.sh= builds both c1 and c2.
+
+** Deploy the contracts:
+0. =./create_accounts $YOURADDRESS= to create some dummy accounts, c1 and c2. =$YOURADDRESS= should not include =c{1,2}.= or =.testnet=.
+1. =near login= with your own address
+2. =./deploy.sh $YOURADDRESS=. =$YOURADDRESS= should not include =c{1,2}.= or =.testnet=.
+
+** Interact with the contracts, local-contract logic
+In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the contents of each contract field.
+=get_X= scripts take one argument, $YOURADDRESS.
+=set_X= scripts take two arguments, $YOURADDRESS, $CHANGE_TO_THIS.
+
+** Interact with the contracts, cross-contract-logic (only c1)
+The dir =c1/cross_contract_scripts= mirrors the scripts available in =c2/call_view_scripts=, with one extra script
+that deploys an another instance of =Con2= to subaddress =c3.$YOURADDRESS.testnet=.
+
+* Things that aren't working
+** Deploy a second instance of Con2 from Con1 (only c1) *FAILING*
+The final script, described in the above section, is thoroughly failing:
+Error: The new account_id c3.dingu.testnet can't be created by c1.dingu.testnet
+
+/A SOLIDLY helpful error./
+
+** Interact with the contracts, cross-contract by callback-logic (only c1) *FAILING*
+The dir =c1/callback_scripts= extends the some functionality of =cross_contract_scripts= using callbacks. See code
+in =c1/src=. Unfortunately, the =.then()= primitive promise function isn't recognized by the compiler for type
+=PromiseOrVec<String>= (and any other type not String).
+
+** Simulation test (only c1) *FAILING*
+In theory, the scripts above should be implementable as simulation tests. Unfortunately, there aren't examples of
+performing multiple contract deployments inside of a simulation test, and we're already failing to deploy contracts
+as it is.

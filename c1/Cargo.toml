@@ -1,0 +1,14 @@
+[package]
+name = "c1"
+version = "0.1.0"
+authors = ["Thor Kamphefner"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"] # because wasm
+
+[dependencies]
+near-sdk = { git = "https://github.com/near/near-sdk-rs.git", tag="2.2.0" }
+
+[dev-dependencies]
+near-sdk-sim = { git = "https://github.com/near/near-sdk-rs.git", tag="2.2.0" }
