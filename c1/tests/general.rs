@@ -15,7 +15,12 @@ use near_sdk_sim::{
 // Bring contract crate into namespace
 extern crate c1;
 use c1::*;
+// Unfortunately, adding c2 to our dev-dependencies plus the following causes global_allocator conflicts:
+// extern crate c2;
 // use c2::*;
+//
+// error: the #[global_allocator] in c1 conflicts with global allocator in: c2
+
 
 // Load contracts' bytes.
 near_sdk_sim::lazy_static! {
@@ -48,9 +53,9 @@ fn init_c1_and_c2(
 
   // let contract_two = deploy! (
   //   contract: Con2Contract,
-    
+
   // )
-  
+
   // Promise::new("c2".to_string())
   //   .create_account()
   //   .transfer(C2_STORAGE_COSTS)
