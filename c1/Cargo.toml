@@ -12,3 +12,4 @@ near-sdk = { git = "https://github.com/near/near-sdk-rs.git", tag="2.2.0" }
 
 [dev-dependencies]
 near-sdk-sim = { git = "https://github.com/near/near-sdk-rs.git", tag="2.2.0" }
+c2 = { path = "../c2" }

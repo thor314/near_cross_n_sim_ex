@@ -171,16 +171,10 @@ impl Con1 {
     self.set_name(name);
   }
 
-  // /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary
-  //   fn cb_get_friend_set_name(&mut self) {
-  //     self
-  //       .get_friend() // returns PromiseOrValue<String>, where the String will be taken as a callback argument
-  //       .then(c1cb::cb_set_name(
-  //         &env::current_account_id(),
-  //         0,
-  //         SINGLE_CALL_GAS / 2,
-  //       ));
-  //   }
+  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary
+    fn cb_get_friend_set_name(&mut self) {
+      con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2,); // returns PromiseOrValue<String>, where the String will be taken as a callback argument
+    }
 
   // /// Call `set_foe`. Then call `get_foe` and use it to call `set_name` locally, using `cb_set_name` as an intermediary
   //   fn cb_get_friend_set_name(&mut self, foe: String) {
