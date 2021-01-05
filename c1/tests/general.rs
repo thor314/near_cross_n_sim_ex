@@ -21,7 +21,6 @@ use c1::*;
 //
 // error: the #[global_allocator] in c1 conflicts with global allocator in: c2
 
-
 // Load contracts' bytes.
 near_sdk_sim::lazy_static! {
   static ref C1_BYTES: &'static [u8] = include_bytes!("./c1.wasm").as_ref();
@@ -42,20 +41,18 @@ fn init_c1_and_c2(
       // User deploying the contract,
       signer_account: main_account,
       // init method
-      init_method: new("Alex".to_string(), 0)
+      init_method: new("mah name".to_string(), 0)
   );
-  let alice = main_account.create_user("alice".to_string(), to_yocto("100"));
+  let alice = main_account.create_user("c2".to_string(), to_yocto("100"));
 
-  // Now create Con2. Panics on panics! But there's no better example of doing this.
-	// https://github.com/near/near-sdk-rs/blob/master/examples/fungible-token/tests/general.rs
+  // Now create Con2. Note that the deploying account MUST not live at a subaddress, so that it may deploy c2 to a subaddress. For these purposes, main account.
   const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
-  let c2 = alice.deploy(&C2_BYTES.to_vec(), "c2".to_string(), C2_STORAGE_COSTS);
+  let c2 = main_account.deploy(&C2_BYTES.to_vec(), "c2".to_string(), C2_STORAGE_COSTS);
 
-  // let contract_two = deploy! (
-  //   contract: Con2Contract,
+  // Note: This method fails because we can't have two global allocators.
+  // let contract_two = deploy! ( ...
 
-  // )
-
+  // Note: This method fails because we can't call Promise stuff from Sim tests.
   // Promise::new("c2".to_string())
   //   .create_account()
   //   .transfer(C2_STORAGE_COSTS)
@@ -68,10 +65,28 @@ fn init_c1_and_c2(
 // some tests
 #[test]
 fn test_get_friend() {
-  let (master_account, contract, alice) = init_c1_and_c2(to_yocto("1000"));
+  let (main_account, contract, alice) = init_c1_and_c2(to_yocto("1000"));
+  let res = call!( // access local state on main_account contract c1.
+    main_account,
+    contract.get_name(), //
+    deposit = STORAGE_AMOUNT
+  );
+	assert!(res.is_ok(), "1"); // minimal panic achieved
+
+	// Can't create new account "" because it already exists
   let res = call!(
-    master_account,
+    alice, // access local state on "alice" contract c2.
     contract.get_friend(),
     deposit = STORAGE_AMOUNT
   );
+	assert!(res.is_ok(), "2");
+
+  let res = call!(
+    main_account, // access cross contract state on "alice" contract c2 from c1.
+    contract.get_friend(),
+    deposit = STORAGE_AMOUNT
+  );
+	assert!(res.is_ok(), "3");
+
+
 }
