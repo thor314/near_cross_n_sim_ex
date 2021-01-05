@@ -39,7 +39,7 @@ impl Con1 {
 pub trait Con2 {
   fn get_friend(&self) -> String;
   fn get_foe(&self) -> String;
-  fn get_i_dunno(&self) -> bool;
+  fn get_i_dunno(&self) -> PromiseOrValue<bool>;
   fn set_foe(&mut self, foe: String);
   fn set_friend(&mut self, friend: String);
   fn set_i_dunno(&mut self, i_dunno: bool);
@@ -50,12 +50,11 @@ const SINGLE_CALL_GAS: u64 = 100_000_000_000_000;
 #[near_bindgen]
 impl Con1 {
   /// Deploy Con2 from within Con1 to a new address: c3.YOURADDRESS.testnet.
-  pub fn deploy_con2_to(&self) {
+  pub fn deploy_con2_to(&self, subaddress: String) {
     Self::log_stuff();
     const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
-    let account_id = "c3".to_string();
     let c2wasm = include_bytes!("../../c2/res/c2.wasm").to_vec();
-    Promise::new(account_id)
+    Promise::new(subaddress)
       .create_account() // create address c3.YOURADDRESS.testnet
       .transfer(C2_STORAGE_COSTS) // cover storage costs
       .add_full_access_key(env::signer_account_pk()) // give the caller of this method (you) full access on that address's behalf
@@ -139,28 +138,18 @@ pub trait Con1Callbacks {
     #[serializer(borsh)]
     name: String,
   );
-  fn cb_set_number(
+  fn cb_increment_number_if_true(
     &self,
     #[callback]
     #[serializer(borsh)]
-    name: u32,
+    b: bool,
   );
 }
 
-// Cross-contracts that change local state via callbacks
+// Methods that do stuff after callbacks
 #[near_bindgen]
+// impl Con1Callbacks for Con1 // Nope, normal is not how this works. That would be nice though.
 impl Con1 {
-  #[result_serializer(borsh)]
-  fn cb_increment_number_if_true(
-    &mut self,
-    #[callback]
-    #[serializer(borsh)]
-    increment: bool,
-  ) {
-    if increment {
-      self.set_number(self.number + 1);
-    }
-  }
   #[result_serializer(borsh)]
   fn cb_set_name(
     &mut self,
@@ -171,31 +160,50 @@ impl Con1 {
     self.set_name(name);
   }
 
-  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary
-    fn cb_get_friend_set_name(&mut self) {
-      con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2,); // returns PromiseOrValue<String>, where the String will be taken as a callback argument
+  #[result_serializer(borsh)]
+  fn cb_increment_number_if_true(
+    &mut self,
+    #[callback]
+    #[serializer(borsh)]
+    b: bool,
+  ) {
+    if b {
+      self.set_number(self.number + 1);
     }
+  }
+}
 
-  // /// Call `set_foe`. Then call `get_foe` and use it to call `set_name` locally, using `cb_set_name` as an intermediary
-  //   fn cb_get_friend_set_name(&mut self, foe: String) {
-  //     self
-  //       .set_foe(foe);
-  //   self.get_foe()
-  //       .then(c1cb::cb_set_name(
-  //         &env::current_account_id(),
-  //         0,
-  //         SINGLE_CALL_GAS / 2,
-  //       ));
-  //   }
+// Methods that generate Callbacks
+#[near_bindgen]
+impl Con1 {
+  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
+	/// Then call set_foe on C2 with the old `name` value.
+  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
+    //let temp_foe = &self.name;
+    // returns PromiseOrValue<String>, where the String will be taken as a callback argument
+    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
+      // self.get_friend() // This (better) syntax fails. Sad face for no code reuse.
+      // Take the string as a callback argument.
+      .then(c1cb::cb_set_name(
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ));
+    // .then(con2::set_foe( // not a callback, just a followup then
+    //   temp_foe.to_string(),
+    //   &env::current_account_id(),
+    //   0,
+    //   SINGLE_CALL_GAS / 2,
+    // ));
+  }
 
-  // /// Call `get_i_dunno`, and if it's true, increment number
-  //   fn cb_get_i_dunno_incr_number(&mut self) {
-  //     self
-  //       .get_i_dunno() // returns PromiseOrValue<String>, where the String will be taken as a callback argument
-  //       .then(c1cb::cb_increment_number_if_true(
-  //         &env::current_account_id(),
-  //         0,
-  //         SINGLE_CALL_GAS / 2,
-  //       ));
-  //   }
+  /// Call `get_i_dunno`, and if it's true, increment number
+  pub fn cb_get_i_dunno_incr_number(&mut self) {
+    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<String>, where the String will be taken as a callback argument
+      .then(c1cb::cb_increment_number_if_true(
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ));
+  }
 }

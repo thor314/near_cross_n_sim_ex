@@ -7,6 +7,7 @@
 1. =near login= with your own address
 2. =./deploy.sh $YOURADDRESS=. =$YOURADDRESS= should not include =c{1,2}.= or =.testnet=.
 
+* Interact with stuff with scripts
 ** Interact with the contracts, local-contract logic
 In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the contents of each contract field.
 =get_X= scripts take one argument, $YOURADDRESS.
@@ -16,19 +17,31 @@ In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the
 The dir =c1/cross_contract_scripts= mirrors the scripts available in =c2/call_view_scripts=, with one extra script
 that deploys another instance of =Con2= to subaddress =c3.$YOURADDRESS.testnet=.
 
-* Things that aren't working
-** Deploy a second instance of Con2 from Con1 (only c1) *FAILING*
-The final script, described in the above section, is thoroughly failing:
+** Modify the state of Contract 1 based on the state of Contract 2 with callbacks
+The dir =c1/callback_scripts= extends the some functionality of =cross_contract_scripts= using callbacks to modify
+the state of Contract 1 based on stuff in C2. This is somewhat specific: We have to use the callback system (Not my
+fave but here we are). Async/await syntax is not supported, unfortunately.
 
-Error: The new account_id c3.dingu.testnet can't be created by c1.dingu.testnet
+Call:
+=./build.sh=
+=./deploy.sh $YOURADDRESS=
+=./c1/callback_scripts/SCRIPT $YOURADDRESS=
+ to demo callbacks at work.
 
-/A SOLIDLY helpful error./
+On methods of form: con2::method
+	Failure [c1.dingu.testnet]: Error: Exceeded the prepaid gas
+	Failure [c1.dingu.testnet]: Error: Contract method is not found
 
-** Interact with the contracts, cross-contract by callback-logic (only c1) *FAILING*
-The dir =c1/callback_scripts= extends the some functionality of =cross_contract_scripts= using callbacks. See code
-in =c1/src=. Unfortunately, the =.then()= primitive promise function isn't recognized by the compiler for type
-=PromiseOrVec<String>= (and any other type not String).
+** Sidequest: Deploy Contract 2 from Contract 1
+We haven't yet deployed any contract to =$YOURADDRESS.testnet=. Call script =./only_bd_c1.sh $YOURADDRESS= to build
+and deploy =c1= to your address.
 
+Then call script =./c1/cross_contract_scripts/deploy_con2_to.sh $YOURADDRESS $SUBADDRESS $YOURADDRESS=.
+
+Note that the deploy script will fail if called from subaddress, i.e. =c1.$YOURADDRESS.testnet=.
+
+
+* Interact with stuff with simulation tests
 ** Simulation test (only c1) *FAILING*
 In theory, the scripts above should be implementable as simulation tests. Unfortunately, there aren't examples of
 performing multiple contract deployments inside of a simulation test, and we're already failing to deploy contracts
