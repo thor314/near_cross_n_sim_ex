@@ -14,11 +14,12 @@ In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the
 
 ** Interact with the contracts, cross-contract-logic (only c1)
 The dir =c1/cross_contract_scripts= mirrors the scripts available in =c2/call_view_scripts=, with one extra script
-that deploys an another instance of =Con2= to subaddress =c3.$YOURADDRESS.testnet=.
+that deploys another instance of =Con2= to subaddress =c3.$YOURADDRESS.testnet=.
 
 * Things that aren't working
 ** Deploy a second instance of Con2 from Con1 (only c1) *FAILING*
 The final script, described in the above section, is thoroughly failing:
+
 Error: The new account_id c3.dingu.testnet can't be created by c1.dingu.testnet
 
 /A SOLIDLY helpful error./
