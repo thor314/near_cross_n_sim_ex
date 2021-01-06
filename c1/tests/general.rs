@@ -30,24 +30,46 @@ near_sdk_sim::lazy_static! {
 /// Deploy the contract and create some dummy accounts.
 fn init_c1_and_c2(
   initial_balance: u128,
-) -> (UserAccount, ContractAccount<Con1Contract>, UserAccount) {
+) -> (
+  UserAccount,
+  ContractAccount<Con1Contract>,
+  UserAccount,
+  UserAccount,
+  UserAccount,
+) {
   let main_account = init_simulator(None);
 
+  // main_account has address: root (not dot testnet)
+  // alice has address: alice (not dot testnet)
+  let testnet = main_account.create_user("testnet".to_string(), to_yocto("1000000"));
+  let dingu = testnet.create_user("dingu.testnet".to_string(), to_yocto("10000"));
+
+  // Now create Con2. Note that the deploying account MUST not live at a subaddress, so that it may deploy c2 to a subaddress. For these purposes, main account.
+
+  const C2_STORAGE_COSTS: u128 = 50000000000000000000000010;
   // Create Con1.
-  let deploy_market = deploy!(
+  let c1 = deploy!(
       contract: Con1Contract,
-      contract_id: "c1",
+      contract_id: "c1.dingu.testnet",
       bytes: &C1_BYTES,
       // User deploying the contract,
-      signer_account: main_account,
+      signer_account: dingu,
       // init method
       init_method: new("mah name".to_string(), 0)
   );
-  let alice = main_account.create_user("c2".to_string(), to_yocto("100"));
 
-  // Now create Con2. Note that the deploying account MUST not live at a subaddress, so that it may deploy c2 to a subaddress. For these purposes, main account.
-  const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
-  let c2 = main_account.deploy(&C2_BYTES.to_vec(), "c2".to_string(), C2_STORAGE_COSTS);
+  let c2 = dingu.deploy(
+    &C2_BYTES.to_vec(),
+    "c2.dingu.testnet".to_string(),
+    C2_STORAGE_COSTS,
+  );
+
+	// Note. THIS WON'T WORK because the call macro breaks if we didn't use the deploy macro for c2.
+	// let res = call!(
+	// 	dingu,
+	// 	c2.new("Todd".to_string(), "clowns".to_string(), true),
+	// 	deposit = 0
+	// );
 
   // Note: This method fails because we can't have two global allocators.
   // let contract_two = deploy! ( ...
@@ -59,34 +81,40 @@ fn init_c1_and_c2(
   //   .add_full_access_key(env::signer_account_pk())
   //   .deploy_contract(C2_BYTES.to_vec());
 
-  (main_account, deploy_market, alice)
+  (main_account, c1, testnet, dingu, c2)
 }
 
 // some tests
 #[test]
 fn test_get_friend() {
-  let (main_account, contract, alice) = init_c1_and_c2(to_yocto("1000"));
-  let res = call!( // access local state on main_account contract c1.
-    main_account,
-    contract.get_name(), //
-    deposit = STORAGE_AMOUNT
-  );
-	assert!(res.is_ok(), "1"); // minimal panic achieved
+  let (main_account, c1, testnet, dingu, c2) = init_c1_and_c2(to_yocto("100000000000"));
+  // let res = call!(
+  //   // access local state on main_account contract c1.
+  //   dingu,
+  //   c1.get_name(),
+  //   deposit = STORAGE_AMOUNT // WHY DID THIS PASS?!?!
+  // );
+  // println!("hello friend: {:#?}", res.get_receipt_results());
+  // println!("hello friend: {:#?}", res);
+  // assert!(res.is_ok(), "1"); // minimal panic achieved
 
-	// Can't create new account "" because it already exists
+  // // Can't create new account "" because it already exists
+  // let res = call!(
+  //   dingu, // access local state on "alice" c1 c2.
+  //   c1.get_friend(),
+  //   deposit = STORAGE_AMOUNT
+  // );
+  // println!("hello friend: {:#?}", res.get_receipt_results());
+  // println!("hello friend: {:#?}", res);
+  // assert!(res.is_ok(), "2");
+
   let res = call!(
-    alice, // access local state on "alice" contract c2.
-    contract.get_friend(),
-    deposit = STORAGE_AMOUNT
+    dingu, // access cross c1 state on "alice" c1 c2 from c1.
+    c1.cb_get_friend_then_set_name(),
+    deposit = 0
   );
-	assert!(res.is_ok(), "2");
 
-  let res = call!(
-    main_account, // access cross contract state on "alice" contract c2 from c1.
-    contract.get_friend(),
-    deposit = STORAGE_AMOUNT
-  );
-	assert!(res.is_ok(), "3");
-
-
+  println!("hello friend: {:#?}", res.get_receipt_results());
+  println!("hello friend: {:#?}", res);
+  assert!(res.is_ok(), "3");
 }

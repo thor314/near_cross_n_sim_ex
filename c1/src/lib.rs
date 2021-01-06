@@ -21,6 +21,7 @@ impl Con1 {
     Self { name, number }
   }
   pub fn get_name(&self) -> String {
+    Con1::log_stuff();
     self.name.clone()
   }
   pub fn get_number(&self) -> u32 {
@@ -63,6 +64,7 @@ impl Con1 {
 
   #[result_serializer(borsh)]
   pub fn get_friend(&self) -> PromiseOrValue<String> {
+    Con1::log_stuff();
     let address: String = env::current_account_id()
       .split_terminator(".")
       .collect::<Vec<&str>>()[1]
@@ -146,9 +148,7 @@ pub trait Con1Callbacks {
   );
 }
 
-// Methods that do stuff after callbacks
 #[near_bindgen]
-// impl Con1Callbacks for Con1 // Nope, normal is not how this works. That would be nice though.
 impl Con1 {
   #[result_serializer(borsh)]
   fn cb_set_name(
@@ -172,40 +172,43 @@ impl Con1 {
     }
   }
 }
+// Methods that do stuff after callbacks
+// impl Con1Callbacks for Con1 // Nope, normal is not how this works. That would be nice though.
 
 // Methods that generate Callbacks
 #[near_bindgen]
 impl Con1 {
   /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-  pub fn cb_get_friend_then_set_name(&mut self) {
+  pub fn cb_get_friend_then_set_name(&mut self) -> PromiseOrValue<()> {
     // returns PromiseOrValue<String>, where the String will be taken as a callback argument
-    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
-      // self.get_friend() // This (better) syntax fails. Sad face for no code reus.
-      // Take the string as a callback argument.
+    Con1::log_stuff();
+    con2::get_friend(&"c2.dingu.testnet", 0, SINGLE_CALL_GAS / 2)
+      // self.get_friend() // This (better) syntax fails. Sad face for no code reuse.
+      //Take the string as a callback argument.
       .then(c1cb::cb_set_name(
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
-      ));
+      )).into()
   }
 
-
-	  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-	/// Then call set_foe on C2 with the old `name` value.
+  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
+  /// Then call set_foe on C2 with the old `name` value.
   pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
-		let temp_foe = &self.name;
+    let temp_foe = &self.name;
     con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
       .then(c1cb::cb_set_name(
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
       ))
-    .then(con2::set_foe( // not a callback, just a followup then
-      temp_foe.to_string(),
-      &env::current_account_id(),
-      0,
-      SINGLE_CALL_GAS / 2,
-    ));
+      .then(con2::set_foe(
+        // not a callback, just a followup then
+        temp_foe.to_string(),
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ));
   }
 
   /// Call `get_i_dunno`, and if it's true, increment number

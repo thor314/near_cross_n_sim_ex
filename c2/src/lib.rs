@@ -7,11 +7,21 @@ use near_sdk::{
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[near_bindgen]
-#[derive(BorshSerialize, BorshDeserialize, Default)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct Con2 {
   friend: String,
   foe: String,
   i_dunno: bool,
+}
+
+impl Default for Con2 {
+  fn default() -> Self {
+    Con2 {
+      friend: "Todd".to_string(),
+      foe: "clowns are in my head".to_string(),
+      i_dunno: true,
+    }
+  }
 }
 
 #[near_bindgen]
