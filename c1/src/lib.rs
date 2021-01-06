@@ -37,8 +37,8 @@ impl Con1 {
 // Call methods on C2.
 #[ext_contract(con2)]
 pub trait Con2 {
-  fn get_friend(&self) -> String;
-  fn get_foe(&self) -> String;
+  fn get_friend(&self) -> PromiseOrValue<String>;
+  fn get_foe(&self) -> PromiseOrValue<String>;
   fn get_i_dunno(&self) -> PromiseOrValue<bool>;
   fn set_foe(&mut self, foe: String);
   fn set_friend(&mut self, friend: String);
@@ -177,29 +177,40 @@ impl Con1 {
 #[near_bindgen]
 impl Con1 {
   /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-	/// Then call set_foe on C2 with the old `name` value.
-  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
-    //let temp_foe = &self.name;
+  pub fn cb_get_friend_then_set_name(&mut self) {
     // returns PromiseOrValue<String>, where the String will be taken as a callback argument
     con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
-      // self.get_friend() // This (better) syntax fails. Sad face for no code reuse.
+      // self.get_friend() // This (better) syntax fails. Sad face for no code reus.
       // Take the string as a callback argument.
       .then(c1cb::cb_set_name(
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
       ));
-    // .then(con2::set_foe( // not a callback, just a followup then
-    //   temp_foe.to_string(),
-    //   &env::current_account_id(),
-    //   0,
-    //   SINGLE_CALL_GAS / 2,
-    // ));
+  }
+
+
+	  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
+	/// Then call set_foe on C2 with the old `name` value.
+  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
+		let temp_foe = &self.name;
+    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
+      .then(c1cb::cb_set_name(
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ))
+    .then(con2::set_foe( // not a callback, just a followup then
+      temp_foe.to_string(),
+      &env::current_account_id(),
+      0,
+      SINGLE_CALL_GAS / 2,
+    ));
   }
 
   /// Call `get_i_dunno`, and if it's true, increment number
   pub fn cb_get_i_dunno_incr_number(&mut self) {
-    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<String>, where the String will be taken as a callback argument
+    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
       .then(c1cb::cb_increment_number_if_true(
         &env::current_account_id(),
         0,
