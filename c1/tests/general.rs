@@ -31,7 +31,7 @@ fn init_c1_and_c2(
   ContractAccount<Con1Contract>,
   UserAccount,
   UserAccount,
-  UserAccount,
+  ContractAccount<Con2Contract>,
 ) {
   let main_account = init_simulator(None);
 
@@ -87,7 +87,7 @@ fn init_c1_and_c2(
   //   .add_full_access_key(env::signer_account_pk())
   //   .deploy_contract(C2_BYTES.to_vec());
 
-  (main_account, c1, testnet, dingu, c2.user_account)
+  (main_account, c1, testnet, dingu, c2)
 }
 
 // some tests
