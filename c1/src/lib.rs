@@ -27,9 +27,7 @@ impl Con1 {
   pub fn get_number(&self) -> u32 {
     self.number
   }
-  pub fn set_name(&mut self, name: String) {
-    self.name = name;
-  }
+
   pub fn set_number(&mut self, number: u32) {
     self.number = number;
   }
@@ -150,7 +148,6 @@ pub trait Con1Callbacks {
 
 #[near_bindgen]
 impl Con1 {
-  #[result_serializer(borsh)]
   fn cb_set_name(
     &mut self,
     #[callback]
@@ -158,6 +155,10 @@ impl Con1 {
     name: String,
   ) {
     self.set_name(name);
+  }
+
+  pub fn set_name(&mut self, name: String) {
+    self.name = name;
   }
 
   #[result_serializer(borsh)]
@@ -189,7 +190,8 @@ impl Con1 {
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
-      )).into()
+      ))
+      .into()
   }
 
   /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.

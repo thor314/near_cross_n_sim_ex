@@ -15,11 +15,7 @@ use near_sdk_sim::{
 // Bring contract crate into namespace
 extern crate c1;
 use c1::*;
-// Unfortunately, adding c2 to our dev-dependencies plus the following causes global_allocator conflicts:
-// extern crate c2;
 // use c2::*;
-//
-// error: the #[global_allocator] in c1 conflicts with global allocator in: c2
 
 // Load contracts' bytes.
 near_sdk_sim::lazy_static! {
@@ -113,8 +109,9 @@ fn test_get_friend() {
     c1.cb_get_friend_then_set_name(),
     deposit = 0
   );
-
-  println!("hello friend: {:#?}", res.get_receipt_results());
-  println!("hello friend: {:#?}", res);
+  // In this case we want to see all of the promises there were generated since we
+  // no longer have the receipts as part of the result
+  println!("Promise results: {:#?}", res.promise_results());
+  println!("Result: {:#?}", res);
   assert!(res.is_ok(), "3");
 }
