@@ -9,17 +9,13 @@ use near_sdk::{
 };
 use near_sdk_sim::{
   account::AccessKey, call, deploy, init_simulator, near_crypto::Signer, to_yocto, view,
-  ContractAccount, UserAccount, STORAGE_AMOUNT,
+  ContractAccount, UserAccount, STORAGE_AMOUNT, DEFAULT_GAS
 };
 
 // Bring contract crate into namespace
 extern crate c1;
 use c1::*;
-// Unfortunately, adding c2 to our dev-dependencies plus the following causes global_allocator conflicts:
-// extern crate c2;
-// use c2::*;
-//
-// error: the #[global_allocator] in c1 conflicts with global allocator in: c2
+use c2::*;
 
 // Load contracts' bytes.
 near_sdk_sim::lazy_static! {
@@ -35,7 +31,7 @@ fn init_c1_and_c2(
   ContractAccount<Con1Contract>,
   UserAccount,
   UserAccount,
-  UserAccount,
+  ContractAccount<Con2Contract>,
 ) {
   let main_account = init_simulator(None);
 
@@ -58,11 +54,21 @@ fn init_c1_and_c2(
       init_method: new("mah name".to_string(), 0)
   );
 
-  let c2 = dingu.deploy(
-    &C2_BYTES.to_vec(),
-    "c2.dingu.testnet".to_string(),
-    C2_STORAGE_COSTS,
-  );
+  let c2 = 
+    deploy!(
+      contract: Con2Contract,
+      contract_id: "c2.dingu.testnet",
+      bytes: &C2_BYTES,
+      signer_account: dingu,
+      deposit: C2_STORAGE_COSTS,
+      gas: DEFAULT_GAS,
+      init_method: new("Toad".to_string(), "clowns are in my hair".to_string(), true)
+    );
+  // dingu.deploy(
+  //   &C2_BYTES.to_vec(),
+  //   "c2.dingu.testnet".to_string(),
+  //   C2_STORAGE_COSTS,
+  // );
 
 	// Note. THIS WON'T WORK because the call macro breaks if we didn't use the deploy macro for c2.
 	// let res = call!(
@@ -113,8 +119,18 @@ fn test_get_friend() {
     c1.cb_get_friend_then_set_name(),
     deposit = 0
   );
-
-  println!("hello friend: {:#?}", res.get_receipt_results());
-  println!("hello friend: {:#?}", res);
+  // In this case we want to see all of the promises there were generated since we
+  // no longer have the receipts as part of the result
+  println!("Promise results: {:#?}", res.promise_results());
+  println!("Result: {:#?}", res);
   assert!(res.is_ok(), "3");
+
+  let res = call!(
+    dingu, // access cross c1 state on "alice" c1 c2 from c1.
+    c1.get_name(),
+    deposit = 0
+  );
+  // In this case we want to see all of the promises there were generated since we
+  // no longer have the receipts as part of the result
+  println!("Result: {:#?}", res);
 }

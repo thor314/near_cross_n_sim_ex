@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 use near_sdk::{
   borsh::{self, BorshDeserialize, BorshSerialize},
-  env, ext_contract, near_bindgen, wee_alloc, Promise, PromiseOrValue,
+  env, ext_contract, near_bindgen,
+  Promise, PromiseOrValue,
 };
 
+#[cfg(target = "wasm32")]
 #[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+static ALLOC: near_sdk::wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, Default)]
@@ -27,11 +29,13 @@ impl Con1 {
   pub fn get_number(&self) -> u32 {
     self.number
   }
-  pub fn set_name(&mut self, name: String) {
-    self.name = name;
-  }
+
   pub fn set_number(&mut self, number: u32) {
     self.number = number;
+  }
+
+  pub fn set_name(&mut self, name: String) {
+    self.name = name;
   }
 }
 
@@ -51,16 +55,16 @@ const SINGLE_CALL_GAS: u64 = 100_000_000_000_000;
 #[near_bindgen]
 impl Con1 {
   /// Deploy Con2 from within Con1 to a new address: c3.YOURADDRESS.testnet.
-  pub fn deploy_con2_to(&self, subaddress: String) {
-    Self::log_stuff();
-    const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
-    let c2wasm = include_bytes!("../../c2/res/c2.wasm").to_vec();
-    Promise::new(subaddress)
-      .create_account() // create address c3.YOURADDRESS.testnet
-      .transfer(C2_STORAGE_COSTS) // cover storage costs
-      .add_full_access_key(env::signer_account_pk()) // give the caller of this method (you) full access on that address's behalf
-      .deploy_contract(c2wasm); // deploy c2 to that address
-  }
+  // pub fn deploy_con2_to(&self, subaddress: String) {
+  //   Self::log_stuff();
+  //   const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
+  //   let c2wasm = include_bytes!("../../c2/res/c2.wasm").to_vec();
+  //   Promise::new(subaddress)
+  //     .create_account() // create address c3.YOURADDRESS.testnet
+  //     .transfer(C2_STORAGE_COSTS) // cover storage costs
+  //     .add_full_access_key(env::signer_account_pk()) // give the caller of this method (you) full access on that address's behalf
+  //     .deploy_contract(c2wasm); // deploy c2 to that address
+  // }
 
   #[result_serializer(borsh)]
   pub fn get_friend(&self) -> PromiseOrValue<String> {
@@ -86,41 +90,41 @@ impl Con1 {
     con2::set_friend(friend, &c2, 0, SINGLE_CALL_GAS / 2);
   }
 
-  pub fn get_foe(&self) -> PromiseOrValue<String> {
-    let address: String = env::current_account_id()
-      .split_terminator(".")
-      .collect::<Vec<&str>>()[1]
-      .to_string();
-    let c2 = format!("c2.{}.testnet", address);
-    con2::get_foe(&c2, 0, SINGLE_CALL_GAS / 2).into()
-  }
+  // pub fn get_foe(&self) -> PromiseOrValue<String> {
+  //   let address: String = env::current_account_id()
+  //     .split_terminator(".")
+  //     .collect::<Vec<&str>>()[1]
+  //     .to_string();
+  //   let c2 = format!("c2.{}.testnet", address);
+  //   con2::get_foe(&c2, 0, SINGLE_CALL_GAS / 2).into()
+  // }
 
-  pub fn set_foe(&self, foe: String) {
-    let address: String = env::current_account_id()
-      .split_terminator(".")
-      .collect::<Vec<&str>>()[1]
-      .to_string();
-    let c2 = format!("c2.{}.testnet", address);
-    con2::set_foe(foe, &c2, 0, SINGLE_CALL_GAS / 2);
-  }
+  // pub fn set_foe(&self, foe: String) {
+  //   let address: String = env::current_account_id()
+  //     .split_terminator(".")
+  //     .collect::<Vec<&str>>()[1]
+  //     .to_string();
+  //   let c2 = format!("c2.{}.testnet", address);
+  //   con2::set_foe(foe, &c2, 0, SINGLE_CALL_GAS / 2);
+  // }
 
-  pub fn get_i_dunno(&self) -> PromiseOrValue<bool> {
-    let address: String = env::current_account_id()
-      .split_terminator(".")
-      .collect::<Vec<&str>>()[1]
-      .to_string();
-    let c2 = format!("c2.{}.testnet", address);
-    con2::get_i_dunno(&c2, 0, SINGLE_CALL_GAS / 2).into()
-  }
+  // pub fn get_i_dunno(&self) -> PromiseOrValue<bool> {
+  //   let address: String = env::current_account_id()
+  //     .split_terminator(".")
+  //     .collect::<Vec<&str>>()[1]
+  //     .to_string();
+  //   let c2 = format!("c2.{}.testnet", address);
+  //   con2::get_i_dunno(&c2, 0, SINGLE_CALL_GAS / 2).into()
+  // }
 
-  pub fn set_i_dunno(&self, i_dunno: bool) {
-    let address: String = env::current_account_id()
-      .split_terminator(".")
-      .collect::<Vec<&str>>()[1]
-      .to_string();
-    let c2 = format!("c2.{}.testnet", address);
-    con2::set_i_dunno(i_dunno, &c2, 0, SINGLE_CALL_GAS / 2);
-  }
+  // pub fn set_i_dunno(&self, i_dunno: bool) {
+  //   let address: String = env::current_account_id()
+  //     .split_terminator(".")
+  //     .collect::<Vec<&str>>()[1]
+  //     .to_string();
+  //   let c2 = format!("c2.{}.testnet", address);
+  //   con2::set_i_dunno(i_dunno, &c2, 0, SINGLE_CALL_GAS / 2);
+  // }
 
   pub fn log_stuff() {
     // Logging messages like these can be super useful.
@@ -150,21 +154,17 @@ pub trait Con1Callbacks {
 
 #[near_bindgen]
 impl Con1 {
-  #[result_serializer(borsh)]
-  fn cb_set_name(
+  pub fn cb_set_name(
     &mut self,
     #[callback]
-    #[serializer(borsh)]
     name: String,
   ) {
     self.set_name(name);
   }
 
-  #[result_serializer(borsh)]
-  fn cb_increment_number_if_true(
+  pub fn cb_increment_number_if_true(
     &mut self,
     #[callback]
-    #[serializer(borsh)]
     b: bool,
   ) {
     if b {
@@ -189,35 +189,36 @@ impl Con1 {
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
-      )).into()
-  }
-
-  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-  /// Then call set_foe on C2 with the old `name` value.
-  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
-    let temp_foe = &self.name;
-    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
-      .then(c1cb::cb_set_name(
-        &env::current_account_id(),
-        0,
-        SINGLE_CALL_GAS / 2,
       ))
-      .then(con2::set_foe(
-        // not a callback, just a followup then
-        temp_foe.to_string(),
-        &env::current_account_id(),
-        0,
-        SINGLE_CALL_GAS / 2,
-      ));
+      .into()
   }
 
-  /// Call `get_i_dunno`, and if it's true, increment number
-  pub fn cb_get_i_dunno_incr_number(&mut self) {
-    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
-      .then(c1cb::cb_increment_number_if_true(
-        &env::current_account_id(),
-        0,
-        SINGLE_CALL_GAS / 2,
-      ));
-  }
+  // /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
+  // /// Then call set_foe on C2 with the old `name` value.
+  // pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
+  //   let temp_foe = &self.name;
+  //   con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
+  //     .then(c1cb::cb_set_name(
+  //       &env::current_account_id(),
+  //       0,
+  //       SINGLE_CALL_GAS / 2,
+  //     ))
+  //     .then(con2::set_foe(
+  //       // not a callback, just a followup then
+  //       temp_foe.to_string(),
+  //       &env::current_account_id(),
+  //       0,
+  //       SINGLE_CALL_GAS / 2,
+  //     ));
+  // }
+
+  // /// Call `get_i_dunno`, and if it's true, increment number
+  // pub fn cb_get_i_dunno_incr_number(&mut self) {
+  //   con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
+  //     .then(c1cb::cb_increment_number_if_true(
+  //       &env::current_account_id(),
+  //       0,
+  //       SINGLE_CALL_GAS / 2,
+  //     ));
+  // }
 }
