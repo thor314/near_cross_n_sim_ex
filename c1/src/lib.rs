@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_imports)]
 use near_sdk::{
   borsh::{self, BorshDeserialize, BorshSerialize},
   env, ext_contract, near_bindgen,
@@ -90,41 +91,41 @@ impl Con1 {
     con2::set_friend(friend, &c2, 0, SINGLE_CALL_GAS / 2);
   }
 
-  // pub fn get_foe(&self) -> PromiseOrValue<String> {
-  //   let address: String = env::current_account_id()
-  //     .split_terminator(".")
-  //     .collect::<Vec<&str>>()[1]
-  //     .to_string();
-  //   let c2 = format!("c2.{}.testnet", address);
-  //   con2::get_foe(&c2, 0, SINGLE_CALL_GAS / 2).into()
-  // }
+  pub fn get_foe(&self) -> PromiseOrValue<String> {
+    let address: String = env::current_account_id()
+      .split_terminator(".")
+      .collect::<Vec<&str>>()[1]
+      .to_string();
+    let c2 = format!("c2.{}.testnet", address);
+    con2::get_foe(&c2, 0, SINGLE_CALL_GAS / 2).into()
+  }
 
-  // pub fn set_foe(&self, foe: String) {
-  //   let address: String = env::current_account_id()
-  //     .split_terminator(".")
-  //     .collect::<Vec<&str>>()[1]
-  //     .to_string();
-  //   let c2 = format!("c2.{}.testnet", address);
-  //   con2::set_foe(foe, &c2, 0, SINGLE_CALL_GAS / 2);
-  // }
+  pub fn set_foe(&self, foe: String) {
+    let address: String = env::current_account_id()
+      .split_terminator(".")
+      .collect::<Vec<&str>>()[1]
+      .to_string();
+    let c2 = format!("c2.{}.testnet", address);
+    con2::set_foe(foe, &c2, 0, SINGLE_CALL_GAS / 2);
+  }
 
-  // pub fn get_i_dunno(&self) -> PromiseOrValue<bool> {
-  //   let address: String = env::current_account_id()
-  //     .split_terminator(".")
-  //     .collect::<Vec<&str>>()[1]
-  //     .to_string();
-  //   let c2 = format!("c2.{}.testnet", address);
-  //   con2::get_i_dunno(&c2, 0, SINGLE_CALL_GAS / 2).into()
-  // }
+  pub fn get_i_dunno(&self) -> PromiseOrValue<bool> {
+    let address: String = env::current_account_id()
+      .split_terminator(".")
+      .collect::<Vec<&str>>()[1]
+      .to_string();
+    let c2 = format!("c2.{}.testnet", address);
+    con2::get_i_dunno(&c2, 0, SINGLE_CALL_GAS / 2).into()
+  }
 
-  // pub fn set_i_dunno(&self, i_dunno: bool) {
-  //   let address: String = env::current_account_id()
-  //     .split_terminator(".")
-  //     .collect::<Vec<&str>>()[1]
-  //     .to_string();
-  //   let c2 = format!("c2.{}.testnet", address);
-  //   con2::set_i_dunno(i_dunno, &c2, 0, SINGLE_CALL_GAS / 2);
-  // }
+  pub fn set_i_dunno(&self, i_dunno: bool) {
+    let address: String = env::current_account_id()
+      .split_terminator(".")
+      .collect::<Vec<&str>>()[1]
+      .to_string();
+    let c2 = format!("c2.{}.testnet", address);
+    con2::set_i_dunno(i_dunno, &c2, 0, SINGLE_CALL_GAS / 2);
+  }
 
   pub fn log_stuff() {
     // Logging messages like these can be super useful.

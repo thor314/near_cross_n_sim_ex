@@ -23,27 +23,33 @@ near_sdk_sim::lazy_static! {
   static ref C2_BYTES: &'static [u8] = include_bytes!("./c2.wasm").as_ref();
 }
 
-/// Deploy the contract and create some dummy accounts.
+/// Deploy the contract(s) and create some dummy accounts. Returns:
+/// - Contract1
+/// - Contract2
+/// - Root Account
+/// - Testnet Account (utility suffix for building other addresses)
+/// - The account Dingu, who deploys contracts 1 and 2 to its subaccounts
 fn init_c1_and_c2(
   initial_balance: u128,
 ) -> (
-  UserAccount,
   ContractAccount<Con1Contract>,
-  UserAccount,
-  UserAccount,
   ContractAccount<Con2Contract>,
+  UserAccount, // root
+  UserAccount, // testnet suffix
+  UserAccount, // Dingu, who deploys contracts 1 and 2 to its subaccounts
 ) {
-  let main_account = init_simulator(None);
+	// Root account has address: "root"
+  let root_account = init_simulator(None);
 
-  // main_account has address: root (not dot testnet)
-  // alice has address: alice (not dot testnet)
-  let testnet = main_account.create_user("testnet".to_string(), to_yocto("1000000"));
+	// Other accounts may be created from the root account
+	// Note: address naming is fully expressive: we may create any suffix we desire, ie testnet, near, etc.
+	// but only those two (.testnet, .near) will be used in practice.
+  let testnet = root_account.create_user("testnet".to_string(), to_yocto("1000000"));
+
+	// We need an account to deploy the contracts from. We may create subaccounts as follows:
   let dingu = testnet.create_user("dingu.testnet".to_string(), to_yocto("10000"));
 
-  // Now create Con2. Note that the deploying account MUST not live at a subaddress, so that it may deploy c2 to a subaddress. For these purposes, main account.
-
-  const C2_STORAGE_COSTS: u128 = 50000000000000000000000010;
-  // Create Con1.
+  // Create Con1 with the deploy macro.
   let c1 = deploy!(
       contract: Con1Contract,
       contract_id: "c1.dingu.testnet",
@@ -54,7 +60,9 @@ fn init_c1_and_c2(
       init_method: new("mah name".to_string(), 0)
   );
 
-  let c2 = 
+	// Create Con2 either with the same macro (its code and wasm blob should BOTH be in this workspace), or see below
+	const C2_STORAGE_COSTS: u128 = 50000000000000000000000010;
+  let c2 =
     deploy!(
       contract: Con2Contract,
       contract_id: "c2.dingu.testnet",
@@ -62,40 +70,38 @@ fn init_c1_and_c2(
       signer_account: dingu,
       deposit: C2_STORAGE_COSTS,
       gas: DEFAULT_GAS,
-      init_method: new("Toad".to_string(), "clowns are in my hair".to_string(), true)
+      init_method: new("Todd".to_string(), "clowns in my hair".to_string(), true)
     );
+
+	// The other way to deploy a contract, use an existing account:
   // dingu.deploy(
   //   &C2_BYTES.to_vec(),
   //   "c2.dingu.testnet".to_string(),
   //   C2_STORAGE_COSTS,
   // );
-
-	// Note. THIS WON'T WORK because the call macro breaks if we didn't use the deploy macro for c2.
+	// This method is less preferable because the following call macro only succeeds with the first method.
 	// let res = call!(
 	// 	dingu,
 	// 	c2.new("Todd".to_string(), "clowns".to_string(), true),
 	// 	deposit = 0
 	// );
 
-  // Note: This method fails because we can't have two global allocators.
-  // let contract_two = deploy! ( ...
-
-  // Note: This method fails because we can't call Promise stuff from Sim tests.
+	// Also note, this deployment method will fail because we can't call Promises from sim tests.
   // Promise::new("c2".to_string())
   //   .create_account()
   //   .transfer(C2_STORAGE_COSTS)
   //   .add_full_access_key(env::signer_account_pk())
   //   .deploy_contract(C2_BYTES.to_vec());
 
-  (main_account, c1, testnet, dingu, c2)
+  (c1, c2, root_account, testnet, dingu)
 }
 
 // some tests
 #[test]
 fn test_get_friend() {
-  let (main_account, c1, testnet, dingu, c2) = init_c1_and_c2(to_yocto("100000000000"));
+  let (root_account, c1, testnet, dingu, c2) = init_c1_and_c2(to_yocto("100000000000"));
   // let res = call!(
-  //   // access local state on main_account contract c1.
+  //   // access local state on root_account contract c1.
   //   dingu,
   //   c1.get_name(),
   //   deposit = STORAGE_AMOUNT // WHY DID THIS PASS?!?!
@@ -131,6 +137,5 @@ fn test_get_friend() {
     deposit = 0
   );
   // In this case we want to see all of the promises there were generated since we
-  // no longer have the receipts as part of the result
-  println!("Result: {:#?}", res);
+  // no longer have the receipts as part of the result println!("Result: {:#?}", res);
 }
