@@ -1,26 +1,40 @@
 * What this: A decent reference to NEAR's cross contract calls, callbacks, and simulation tests
 ** Build the contracts:
-=./build.sh= builds both c1 and c2.
+=./build.sh= builds c1 and c2 to wasm blobs.
 
 ** Deploy the contracts:
-0. =./create_accounts $YOURADDRESS= to create some dummy accounts, c1 and c2. =$YOURADDRESS= should not include =c{1,2}.= or =.testnet=.
+0. =./create_accounts $YOURADDRESS= to create some dummy accounts, c1 and c2 for your account. =$YOURADDRESS=
+   should be a string without any subaccount or =.testnet= suffix.
 1. =near login= with your own address
 2. =./deploy.sh $YOURADDRESS=. =$YOURADDRESS= should not include =c{1,2}.= or =.testnet=.
 
-* Interact with stuff with scripts
+* Interact with stuff with simulation tests (Easy Way)
+** Prelude motivations
+The main purpose of writing this repo was to document NEAR's simulation testing suite in it's most compelling use
+case: creating several contracts that interact with one another in complex ways, requiring cross contract calls and
+callback logic. The Simulation test suite gives us the tools we need to test our cross contract methods, and get
+information about things like gas usage, without writing guess and check scripts, as we do below (this was how this
+repo was originally written)
+
+** Simulation test examples
+Take a look at =tests/general.rs=. A normal =cargo test= will demonstrate a simulation test. They take a bit longer
+than usual tests to run. To get more detailed information (like profiling) on tests that are passing, instead run:
+
+=cargo test -- --nocapture=
+
+* Interact with stuff with scripts (Hard way)
 ** Interact with the contracts, local-contract logic
 In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the contents of each contract field.
 =get_X= scripts take one argument, $YOURADDRESS.
 =set_X= scripts take two arguments, $YOURADDRESS, $CHANGE_TO_THIS.
 
-** Interact with the contracts, cross-contract-logic (only c1)
-The dir =c1/cross_contract_scripts= mirrors the scripts available in =c2/call_view_scripts=, with one extra script
-that deploys another instance of =Con2= to subaddress =c3.$YOURADDRESS.testnet=.
+** Interact with the contracts, cross-contract-logic
+The dir =c1/cross_contract_scripts= mirrors the scripts available in =c2/call_view_scripts=, but calls via
+cross-contract calls.
 
-** Modify the state of Contract 1 based on the state of Contract 2 with callbacks *FAILING*
+** Modify the state of Contract 1 based on the state of Contract 2 with callbacks
 The dir =c1/callback_scripts= extends the some functionality of =cross_contract_scripts= using callbacks to modify
-the state of Contract 1 based on stuff in C2. This is somewhat specific: We have to use the callback system (Not my
-fave but here we are). Async/await syntax is not supported, unfortunately.
+the state of Contract 1 based on stuff in C2.
 
 Call:
 =./build.sh=
@@ -28,23 +42,40 @@ Call:
 =./c1/callback_scripts/SCRIPT $YOURADDRESS=
  to demo callbacks at work.
 
-On methods of form: con2::method
-	Failure [c1.dingu.testnet]: Error: Exceeded the prepaid gas
-	Failure [c1.dingu.testnet]: Error: Contract method is not found
+* Sidequest: Deploy Contract 2 from Contract 1
+Because we wanted to have contracts 1 and 2 live at addresses =c1.YOURADDRESS.testnet= and =c2.YOURADDRESS.testnet=
+respectively, we haven't had the opportunity to demonstrate deploying contract 2 from contract 1. For this, c1 has
+to live at address =YOURADDRESS.testnet=, not =c1.YOURADDRESS.testnet=.
 
-** Sidequest: Deploy Contract 2 from Contract 1
-We haven't yet deployed any contract to =$YOURADDRESS.testnet=. Call script =./only_bd_c1.sh $YOURADDRESS= to build
-and deploy =c1= to your address.
+Try deploying Contract 1 to that address, and call script:
 
-Then call script =./c1/cross_contract_scripts/deploy_con2_to.sh $YOURADDRESS $SUBADDRESS $YOURADDRESS=.
+=./c1/cross_contract_scripts/deploy_con2_to.sh $YOURADDRESS $SUBADDRESS=.
 
-Note that the deploy script will fail if called from subaddress, i.e. =c1.$YOURADDRESS.testnet=.
+to give that a go.
 
+* THE "WILLEM WHAT'S THAT?" CORNER
+** In the call macro, why isn't this failing?
+#+begin_src rust
+  let res = call!(
+    deployer,                    // May call from any address
+    c1.get_name(),            // call this function
+    deposit = STORAGE_AMOUNT // send this amount to a payable function // TODO: WHY DID THIS PASS?!?! This should only accept 0, as get_name is not payable.
+  );
+#+end_src
+** c1/callback_scripts are failing
+If I change the amount of gas my c1/callback_scripts/*.sh is using, will it run?
 
-* Interact with stuff with simulation tests
-** Simulation test (only c1) *FAILING*
-Minimal panic: see line 74 in =c1/tests/general.rs=.
-Error: =Failure(Action #0: Can't create a new account "c2", because it already exists)=
+Eg, right now my workflow is:
 
-Probable cause: I suspect deployment of contract two failed because =main_account= was deployed to a subaccount,
-but I'm not certain how to verify this.
+=./build.sh=
+
+=./deploy.sh dingu=
+
+=./c1/callback_scripts/cb_get_friend_then_set_name.sh dingu=
+
+and I get the failure:   message: 'Exceeded the prepaid gas'
+
+So I went into the sim test for the function =cb_get_friend_then_set_name= and found is uses 425057293590 gas. I
+added the argument =--gas 435057293590= to the script, but I'm still getting the Exceeded prepaid gas error. Thoughts?
+
+Incrementing the gas argument up to =--gas 43505729359000= returns the same error.

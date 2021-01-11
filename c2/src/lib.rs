@@ -1,10 +1,11 @@
 use near_sdk::{
   borsh::{self, BorshDeserialize, BorshSerialize},
-  ext_contract, near_bindgen, wee_alloc,
+  near_bindgen,
 };
 
+#[cfg(target = "wasm32")]
 #[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+static ALLOC: near_sdk::wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -53,16 +54,3 @@ impl Con2 {
     self.i_dunno = i_dunno;
   }
 }
-
-// Call methods on C1.
-#[ext_contract(con1)]
-pub trait Con1 {
-  fn get_name(&self) -> String;
-  fn get_number(&self) -> u32;
-  fn set_name(&mut self, name: String);
-  fn set_number(&mut self, number: u32);
-}
-
-// #[near_bindgen]
-// impl Con2{
-// }

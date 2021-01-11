@@ -5,7 +5,7 @@ use near_sdk::{
   json_types::U128,
   serde::{Deserialize, Serialize},
   serde_json::json,
-  Promise, *,
+  Promise,
 };
 use near_sdk_sim::{
   account::AccessKey, call, deploy, init_simulator, near_crypto::Signer, to_yocto, view,
@@ -16,6 +16,9 @@ use near_sdk_sim::{
 extern crate c1;
 use c1::*;
 use c2::*;
+
+// My favorite address is dingu.
+const MYADDRESS: &str = "dingu";
 
 // Load contracts' bytes.
 near_sdk_sim::lazy_static! {
@@ -28,7 +31,7 @@ near_sdk_sim::lazy_static! {
 /// - Contract2
 /// - Root Account
 /// - Testnet Account (utility suffix for building other addresses)
-/// - The account Dingu, who deploys contracts 1 and 2 to its subaccounts
+/// - The account who deploys contracts 1 and 2 to its subaccounts
 fn init_c1_and_c2(
   initial_balance: u128,
 ) -> (
@@ -36,7 +39,7 @@ fn init_c1_and_c2(
   ContractAccount<Con2Contract>,
   UserAccount, // root
   UserAccount, // testnet suffix
-  UserAccount, // Dingu, who deploys contracts 1 and 2 to its subaccounts
+  UserAccount, // deployer, who deploys contracts 1 and 2 to its subaccounts
 ) {
   // Root account has address: "root"
   let root_account = init_simulator(None);
@@ -47,26 +50,29 @@ fn init_c1_and_c2(
   let testnet = root_account.create_user("testnet".to_string(), to_yocto("1000000"));
 
   // We need an account to deploy the contracts from. We may create subaccounts as follows:
-  let dingu = testnet.create_user("dingu.testnet".to_string(), to_yocto("10000"));
+  let address = format!("{}.testnet", MYADDRESS);
+  let deployer = testnet.create_user(address.clone(), to_yocto("10000"));
 
   // Create Con1 with the deploy macro.
+  let c1_address = format!("c1.{}", address.clone());
   let c1 = deploy!(
       contract: Con1Contract,
-      contract_id: "c1.dingu.testnet",
+      contract_id: c1_address,
       bytes: &C1_BYTES,
       // User deploying the contract,
-      signer_account: dingu,
+      signer_account: deployer,
       // init method
       init_method: new("mah name".to_string(), 0)
   );
 
   // Create Con2 either with the same macro (its code and wasm blob should BOTH be in this workspace), or see below
-  const C2_STORAGE_COSTS: u128 = 50000000000000000000000010;
+  let c2_address = format!("c2.{}", address);
+  const C2_STORAGE_COSTS: u128 = 50000000000000000000000000;
   let c2 = deploy!(
     contract: Con2Contract,
-    contract_id: "c2.dingu.testnet",
+    contract_id: c2_address,
     bytes: &C2_BYTES,
-    signer_account: dingu,
+    signer_account: deployer,
     deposit: C2_STORAGE_COSTS,
     gas: DEFAULT_GAS,
     init_method: new("Todd".to_string(), "clowns in my hair".to_string(), true)
@@ -80,7 +86,7 @@ fn init_c1_and_c2(
   // );
   // This method is less preferable because the following call macro only succeeds with the first method.
   // let res = call!(
-  // 	dingu,
+  // 	deployer,
   // 	c2.new("Todd".to_string(), "clowns".to_string(), true),
   // 	deposit = 0
   // );
@@ -92,62 +98,67 @@ fn init_c1_and_c2(
   //   .add_full_access_key(env::signer_account_pk())
   //   .deploy_contract(C2_BYTES.to_vec());
 
-  (c1, c2, root_account, testnet, dingu)
+  (c1, c2, root_account, testnet, deployer)
 }
 
 /// Helper to log ExecutionResult outcome of a call/view
-fn print_helper(res: ExecutionResult) {
+fn log_helper(res: ExecutionResult) {
   println!("Promise results: {:#?}", res.promise_results());
-  println!("receipt results:: {:#?}", res.get_receipt_results());
-  println!("res: {:#?}", res);
+  //println!("receipt results: {:#?}", res.get_receipt_results());
+  println!("profiling: {:#?}", res.profile_data());
+  //println!("Result: {:#?}", res);
   assert!(res.is_ok());
 }
 
-/*
 /// Basic proof of concept sim test.
 /// First: test access of local state on contract 1, calling get_name.
 /// Second: Test access of local state on contract 2, calling get_friend from contract 2.
 /// Third: test a cross contract call on contract 1, calling get_friend on contract 2 from contract 1.
 #[test]
 fn test_get_friend() {
-  let (c1, c2, root_account, testnet, dingu) = init_c1_and_c2(to_yocto("100000000000"));
+  let (c1, c2, root_account, testnet, deployer) = init_c1_and_c2(to_yocto("100000000000"));
   // First: test access of local state on contract 1, calling get_name.
   let res = call!(
-    dingu,                    // May call from any address, use dingu here.
+    deployer,                 // May call from any address
     c1.get_name(),            // call this function
-    deposit = STORAGE_AMOUNT // send this amount to a payable function // TODO: WHY DID THIS PASS?!?!
+    deposit = STORAGE_AMOUNT // send this amount to a payable function // TODO: WHY DID THIS PASS?!?! This should only accept 0, as get_name is not payable.
   );
-  print_helper(res);
+  log_helper(res);
 
   // Second: Test access of local state on contract 2, calling get_friend from contract 2.
   let res = call!(
-    dingu,
+    deployer,
     c2.get_friend(),
     deposit = 0 // send 0 to non-payable functions
   );
-  print_helper(res);
+  log_helper(res);
 
   // Third: test a cross contract call on contract 1, calling get_friend on contract 2 from contract 1.
-  let res = call!(dingu, c1.get_friend()); // if no deposit field, assumed deposit is 0
-  print_helper(res);
+  let res = call!(deployer, c1.get_friend()); // if no deposit field, assumed deposit is 0
+  log_helper(res);
 
   // Note that the output logs of the Execution results provide information about the call. In particular,
   // information about gas consumption can be very useful.
 }
-   */
 
 /// Test a callback function on contract one, which gets the state on contract 2 and uses it to modify local state.
 #[test]
 fn test_cb_gf_sn() {
-  let (c1, c2, root_account, testnet, dingu) = init_c1_and_c2(to_yocto("100000000000"));
-  let view = view!(c1.get_name());
-  println!("{:?}", view);
-  //println!("{:?}", view.unwrap_json::<String>());
-
-  let res = call!(dingu, c1.cb_get_friend_then_set_name());
-  print_helper(res);
+  let (c1, c2, root_account, testnet, deployer) = init_c1_and_c2(to_yocto("100000000000"));
 
   let view = view!(c1.get_name());
-  println!("{:?}", view);
+  //let view = call!(deployer, c1.get_name());
+  println!("before view results: {:?}", view);
+  println!("name is: {:?}", view.unwrap_json::<String>());
 
+  let res = call!(
+    deployer,
+    c1.cb_get_friend_then_set_name(MYADDRESS.to_string())
+  );
+  log_helper(res);
+
+  let view = view!(c1.get_name());
+  //let view = call!(deployer, c1.get_name());
+  println!("after view results: {:?}", view);
+  println!("name is: {:?}", view.unwrap_json::<String>());
 }

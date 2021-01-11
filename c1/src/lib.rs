@@ -2,8 +2,7 @@
 #![allow(unused_imports)]
 use near_sdk::{
   borsh::{self, BorshDeserialize, BorshSerialize},
-  env, ext_contract, near_bindgen,
-  Promise, PromiseOrValue,
+  env, ext_contract, near_bindgen, Promise, PromiseOrValue,
 };
 
 #[cfg(target = "wasm32")]
@@ -21,10 +20,10 @@ pub struct Con1 {
 impl Con1 {
   #[init]
   pub fn new(name: String, number: u32) -> Self {
+    //Con1::log_stuff();
     Self { name, number }
   }
   pub fn get_name(&self) -> String {
-    Con1::log_stuff();
     self.name.clone()
   }
   pub fn get_number(&self) -> u32 {
@@ -56,29 +55,25 @@ const SINGLE_CALL_GAS: u64 = 100_000_000_000_000;
 #[near_bindgen]
 impl Con1 {
   /// Deploy Con2 from within Con1 to a new address: c3.YOURADDRESS.testnet.
-  // pub fn deploy_con2_to(&self, subaddress: String) {
-  //   Self::log_stuff();
-  //   const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
-  //   let c2wasm = include_bytes!("../../c2/res/c2.wasm").to_vec();
-  //   Promise::new(subaddress)
-  //     .create_account() // create address c3.YOURADDRESS.testnet
-  //     .transfer(C2_STORAGE_COSTS) // cover storage costs
-  //     .add_full_access_key(env::signer_account_pk()) // give the caller of this method (you) full access on that address's behalf
-  //     .deploy_contract(c2wasm); // deploy c2 to that address
-  // }
+  pub fn deploy_con2_to(&self, subaddress: String) {
+    //Self::log_stuff();
+    const C2_STORAGE_COSTS: u128 = 11_590_300_000_000_000_000_000_000;
+    let c2wasm = include_bytes!("../../c2/res/c2.wasm").to_vec();
+    Promise::new(subaddress)
+      .create_account() // create address c3.YOURADDRESS.testnet
+      .transfer(C2_STORAGE_COSTS) // cover storage costs
+      .add_full_access_key(env::signer_account_pk()) // give the caller of this method (you) full access on that address's behalf
+      .deploy_contract(c2wasm); // deploy c2 to that address
+  }
 
   #[result_serializer(borsh)]
   pub fn get_friend(&self) -> PromiseOrValue<String> {
-    Con1::log_stuff();
+    //Con1::log_stuff();
     let address: String = env::current_account_id()
       .split_terminator(".")
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    // Note on this number: I don't have a good idea of how to estimate gas, but generally:
-    // SINGLE_CALL_GAS /4 < N < SINGLE_CALL_GAS * 95/100
-    // seems the right number. Higher causes `GasExceeded` errors, which can be solved with shoving more gas in, ie
-    // add the arg `--gas 300000000000000`. This is an area I think NEAR is working on improving clarity.
     con2::get_friend(&c2, 0, SINGLE_CALL_GAS / 2).into()
   }
 
@@ -155,19 +150,11 @@ pub trait Con1Callbacks {
 
 #[near_bindgen]
 impl Con1 {
-  pub fn cb_set_name(
-    &mut self,
-    #[callback]
-    name: String,
-  ) {
+  pub fn cb_set_name(&mut self, #[callback] name: String) {
     self.set_name(name);
   }
 
-  pub fn cb_increment_number_if_true(
-    &mut self,
-    #[callback]
-    b: bool,
-  ) {
+  pub fn cb_increment_number_if_true(&mut self, #[callback] b: bool) {
     if b {
       self.set_number(self.number + 1);
     }
@@ -180,13 +167,13 @@ impl Con1 {
 #[near_bindgen]
 impl Con1 {
   /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-  pub fn cb_get_friend_then_set_name(&mut self) -> PromiseOrValue<()> {
+  pub fn cb_get_friend_then_set_name(&mut self, my_address: String) -> PromiseOrValue<()> {
     // returns PromiseOrValue<String>, where the String will be taken as a callback argument
-    Con1::log_stuff();
-    con2::get_friend(&"c2.dingu.testnet", 0, SINGLE_CALL_GAS / 2)
-      // self.get_friend() // This (better) syntax fails. Sad face for no code reuse.
-      //Take the string as a callback argument.
+    //Con1::log_stuff();
+    let f = format!("c2.{}.testnet", my_address);
+    con2::get_friend(&f, 0, SINGLE_CALL_GAS / 2)
       .then(c1cb::cb_set_name(
+        //Take the returned string as a callback argument.
         &env::current_account_id(),
         0,
         SINGLE_CALL_GAS / 2,
@@ -194,32 +181,32 @@ impl Con1 {
       .into()
   }
 
-  // /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-  // /// Then call set_foe on C2 with the old `name` value.
-  // pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
-  //   let temp_foe = &self.name;
-  //   con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
-  //     .then(c1cb::cb_set_name(
-  //       &env::current_account_id(),
-  //       0,
-  //       SINGLE_CALL_GAS / 2,
-  //     ))
-  //     .then(con2::set_foe(
-  //       // not a callback, just a followup then
-  //       temp_foe.to_string(),
-  //       &env::current_account_id(),
-  //       0,
-  //       SINGLE_CALL_GAS / 2,
-  //     ));
-  // }
+  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
+  /// Then call set_foe on C2 with the old `name` value.
+  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
+    let temp_foe = &self.name;
+    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
+      .then(c1cb::cb_set_name(
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ))
+      .then(con2::set_foe(
+        // not a callback, just a followup then
+        temp_foe.to_string(),
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ));
+  }
 
-  // /// Call `get_i_dunno`, and if it's true, increment number
-  // pub fn cb_get_i_dunno_incr_number(&mut self) {
-  //   con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
-  //     .then(c1cb::cb_increment_number_if_true(
-  //       &env::current_account_id(),
-  //       0,
-  //       SINGLE_CALL_GAS / 2,
-  //     ));
-  // }
+  /// Call `get_i_dunno`, and if it's true, increment number
+  pub fn cb_get_i_dunno_incr_number(&mut self) {
+    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
+      .then(c1cb::cb_increment_number_if_true(
+        &env::current_account_id(),
+        0,
+        SINGLE_CALL_GAS / 2,
+      ));
+  }
 }
