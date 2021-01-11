@@ -83,7 +83,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-			con2::set_friend(friend, &c2, 0, env::prepaid_gas() / 2);
+    con2::set_friend(friend, &c2, 0, env::prepaid_gas() / 2);
   }
 
   pub fn get_foe(&self) -> PromiseOrValue<String> {
@@ -140,12 +140,6 @@ pub trait Con1Callbacks {
     #[serializer(borsh)]
     name: String,
   );
-  fn cb_increment_number_if_true(
-    &self,
-    #[callback]
-    #[serializer(borsh)]
-    b: bool,
-  );
 }
 
 #[near_bindgen]
@@ -153,17 +147,8 @@ impl Con1 {
   pub fn cb_set_name(&mut self, #[callback] name: String) {
     self.set_name(name);
   }
-
-  pub fn cb_increment_number_if_true(&mut self, #[callback] b: bool) {
-    if b {
-      self.set_number(self.number + 1);
-    }
-  }
 }
-// Methods that do stuff after callbacks
-// impl Con1Callbacks for Con1 // Nope, normal is not how this works. That would be nice though.
 
-// Methods that generate Callbacks
 #[near_bindgen]
 impl Con1 {
   /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
@@ -179,34 +164,5 @@ impl Con1 {
         env::prepaid_gas() / 3,
       ))
       .into()
-  }
-
-  /// Call `get_friend` and use it to call `set_name` locally, using `cb_set_name` as an intermediary.
-  /// Then call set_foe on C2 with the old `name` value.
-  pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
-    let temp_foe = &self.name;
-    con2::get_friend(&env::current_account_id(), 0, env::prepaid_gas() / 3)
-      .then(c1cb::cb_set_name(
-        &env::current_account_id(),
-        0,
-        env::prepaid_gas() / 3,
-      ))
-      .then(con2::set_foe(
-        // not a callback, just a followup then
-        temp_foe.to_string(),
-        &env::current_account_id(),
-        0,
-        env::prepaid_gas() / 3,
-      ));
-  }
-
-  /// Call `get_i_dunno`, and if it's true, increment number
-  pub fn cb_get_i_dunno_incr_number(&mut self) {
-    con2::get_i_dunno(&env::current_account_id(), 0, env::prepaid_gas() / 3) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
-      .then(c1cb::cb_increment_number_if_true(
-        &env::current_account_id(),
-        0,
-        env::prepaid_gas() / 3,
-      ));
   }
 }

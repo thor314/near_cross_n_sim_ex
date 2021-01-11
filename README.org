@@ -1,4 +1,6 @@
-* What this: A decent reference to NEAR's cross contract calls, callbacks, and simulation tests
+* What this:
+A alright reference to NEAR's cross contract calls, callbacks, and simulation tests.
+
 ** Build the contracts:
 =./build.sh= builds c1 and c2 to wasm blobs.
 
@@ -23,6 +25,8 @@ than usual tests to run. To get more detailed information (like profiling) on te
 =cargo test -- --nocapture=
 
 * Interact with stuff with scripts (Hard way)
+Note that, if you get error messages about gas usage, always refer to the gas usage details in [[https://explorer.testnet.near.org/transactions/2LZDe35vxQB5LCsTLts7Uuu4eDyJ4noHaE6VuVQECUz8][the explorer]] as more
+truthy than the error messages. The error messages in the terminal can undershoot the actual necessary gas.
 ** Interact with the contracts, local-contract logic
 In the dirs =c{1,2}/call_view_scripts=, there are scripts to view and modify the contents of each contract field.
 =get_X= scripts take one argument, $YOURADDRESS.
@@ -52,22 +56,3 @@ Try deploying Contract 1 to that address, and call script:
 =./c1/cross_contract_scripts/deploy_con2_to.sh $YOURADDRESS $SUBADDRESS=.
 
 to give that a go.
-
-* THE "WILLEM WHAT'S THAT?" CORNER
-** c1/callback_scripts are failing
-If I change the amount of gas my c1/callback_scripts/*.sh is using, will it run?
-
-Eg, right now my workflow is:
-
-=./build.sh=
-
-=./deploy.sh dingu=
-
-=./c1/callback_scripts/cb_get_friend_then_set_name.sh dingu=
-
-and I get the failure:   message: 'Exceeded the prepaid gas'
-
-So I went into the sim test for the function =cb_get_friend_then_set_name= and found is uses 425057293590 gas. I
-added the argument =--gas 435057293590= to the script, but I'm still getting the Exceeded prepaid gas error. Thoughts?
-
-Incrementing the gas argument up to =--gas 43505729359000= returns the same error.
