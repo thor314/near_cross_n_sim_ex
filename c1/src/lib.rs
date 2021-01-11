@@ -74,7 +74,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::get_friend(&c2, 0, SINGLE_CALL_GAS / 2).into()
+    con2::get_friend(&c2, 0, env::prepaid_gas() / 2).into()
   }
 
   pub fn set_friend(&self, friend: String) {
@@ -83,7 +83,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::set_friend(friend, &c2, 0, SINGLE_CALL_GAS / 2);
+			con2::set_friend(friend, &c2, 0, env::prepaid_gas() / 2);
   }
 
   pub fn get_foe(&self) -> PromiseOrValue<String> {
@@ -92,7 +92,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::get_foe(&c2, 0, SINGLE_CALL_GAS / 2).into()
+    con2::get_foe(&c2, 0, env::prepaid_gas() / 2).into()
   }
 
   pub fn set_foe(&self, foe: String) {
@@ -101,7 +101,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::set_foe(foe, &c2, 0, SINGLE_CALL_GAS / 2);
+    con2::set_foe(foe, &c2, 0, env::prepaid_gas() / 2);
   }
 
   pub fn get_i_dunno(&self) -> PromiseOrValue<bool> {
@@ -110,7 +110,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::get_i_dunno(&c2, 0, SINGLE_CALL_GAS / 2).into()
+    con2::get_i_dunno(&c2, 0, env::prepaid_gas() / 2).into()
   }
 
   pub fn set_i_dunno(&self, i_dunno: bool) {
@@ -119,7 +119,7 @@ impl Con1 {
       .collect::<Vec<&str>>()[1]
       .to_string();
     let c2 = format!("c2.{}.testnet", address);
-    con2::set_i_dunno(i_dunno, &c2, 0, SINGLE_CALL_GAS / 2);
+    con2::set_i_dunno(i_dunno, &c2, 0, env::prepaid_gas() / 2);
   }
 
   pub fn log_stuff() {
@@ -171,12 +171,12 @@ impl Con1 {
     // returns PromiseOrValue<String>, where the String will be taken as a callback argument
     //Con1::log_stuff();
     let f = format!("c2.{}.testnet", my_address);
-    con2::get_friend(&f, 0, SINGLE_CALL_GAS / 2)
+    con2::get_friend(&f, 0, env::prepaid_gas() / 3)
       .then(c1cb::cb_set_name(
         //Take the returned string as a callback argument.
         &env::current_account_id(),
         0,
-        SINGLE_CALL_GAS / 2,
+        env::prepaid_gas() / 3,
       ))
       .into()
   }
@@ -185,28 +185,28 @@ impl Con1 {
   /// Then call set_foe on C2 with the old `name` value.
   pub fn cb_get_friend_then_set_name_then_set_foe(&mut self) {
     let temp_foe = &self.name;
-    con2::get_friend(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2)
+    con2::get_friend(&env::current_account_id(), 0, env::prepaid_gas() / 3)
       .then(c1cb::cb_set_name(
         &env::current_account_id(),
         0,
-        SINGLE_CALL_GAS / 2,
+        env::prepaid_gas() / 3,
       ))
       .then(con2::set_foe(
         // not a callback, just a followup then
         temp_foe.to_string(),
         &env::current_account_id(),
         0,
-        SINGLE_CALL_GAS / 2,
+        env::prepaid_gas() / 3,
       ));
   }
 
   /// Call `get_i_dunno`, and if it's true, increment number
   pub fn cb_get_i_dunno_incr_number(&mut self) {
-    con2::get_i_dunno(&env::current_account_id(), 0, SINGLE_CALL_GAS / 2) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
+    con2::get_i_dunno(&env::current_account_id(), 0, env::prepaid_gas() / 3) // returns PromiseOrValue<bool>, where the bool will be taken as a callback argument
       .then(c1cb::cb_increment_number_if_true(
         &env::current_account_id(),
         0,
-        SINGLE_CALL_GAS / 2,
+        env::prepaid_gas() / 3,
       ));
   }
 }

@@ -54,14 +54,6 @@ Try deploying Contract 1 to that address, and call script:
 to give that a go.
 
 * THE "WILLEM WHAT'S THAT?" CORNER
-** In the call macro, why isn't this failing?
-#+begin_src rust
-  let res = call!(
-    deployer,                    // May call from any address
-    c1.get_name(),            // call this function
-    deposit = STORAGE_AMOUNT // send this amount to a payable function // TODO: WHY DID THIS PASS?!?! This should only accept 0, as get_name is not payable.
-  );
-#+end_src
 ** c1/callback_scripts are failing
 If I change the amount of gas my c1/callback_scripts/*.sh is using, will it run?
 

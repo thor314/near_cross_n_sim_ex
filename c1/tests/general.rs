@@ -119,9 +119,9 @@ fn test_get_friend() {
   let (c1, c2, root_account, testnet, deployer) = init_c1_and_c2(to_yocto("100000000000"));
   // First: test access of local state on contract 1, calling get_name.
   let res = call!(
-    deployer,                 // May call from any address
-    c1.get_name(),            // call this function
-    deposit = STORAGE_AMOUNT // send this amount to a payable function // TODO: WHY DID THIS PASS?!?! This should only accept 0, as get_name is not payable.
+    deployer,      // May call from any address
+    c1.get_name(), // call this function
+    deposit = 0    // send this amount (only matters for payable functions)
   );
   log_helper(res);
 
@@ -136,9 +136,6 @@ fn test_get_friend() {
   // Third: test a cross contract call on contract 1, calling get_friend on contract 2 from contract 1.
   let res = call!(deployer, c1.get_friend()); // if no deposit field, assumed deposit is 0
   log_helper(res);
-
-  // Note that the output logs of the Execution results provide information about the call. In particular,
-  // information about gas consumption can be very useful.
 }
 
 /// Test a callback function on contract one, which gets the state on contract 2 and uses it to modify local state.
@@ -146,8 +143,9 @@ fn test_get_friend() {
 fn test_cb_gf_sn() {
   let (c1, c2, root_account, testnet, deployer) = init_c1_and_c2(to_yocto("100000000000"));
 
-  let view = view!(c1.get_name());
-  //let view = call!(deployer, c1.get_name());
+  // a view works in a test environment but might break in prod, as view/reads on the real chain cost gas
+  //let view = view!(c1.get_name());
+  let view = call!(deployer, c1.get_name());
   println!("before view results: {:?}", view);
   println!("name is: {:?}", view.unwrap_json::<String>());
 
@@ -157,8 +155,8 @@ fn test_cb_gf_sn() {
   );
   log_helper(res);
 
-  let view = view!(c1.get_name());
-  //let view = call!(deployer, c1.get_name());
+  //let view = view!(c1.get_name());
+  let view = call!(deployer, c1.get_name());
   println!("after view results: {:?}", view);
   println!("name is: {:?}", view.unwrap_json::<String>());
 }
